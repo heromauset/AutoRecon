@@ -1,75 +1,110 @@
 #!/bin/bash
 
-# Verificações de pré-requisitos
-check_command() {
-    if ! command -v "$1" &> /dev/null; then
-        echo "Erro: $1 não está instalado. Instale-o e tente novamente."
+# ============================================
+# AutoRecon Installer (Fork Installer Script)
+# Repositório original: https://github.com/LuizWT/AutoRecon
+# Este script facilita a instalação em distros variadas e de forma automatizada
+# Re-Script por Ioti =)
+# ============================================
+set -e
+
+# Cores
+verde="\e[32m"
+vermelho="\e[31m"
+neutro="\e[0m"
+
+# Função para detectar o gerenciador de pacotes
+detect_package_manager() {
+    if command -v apt &> /dev/null; then
+        PM="apt"
+    elif command -v dnf &> /dev/null; then
+        PM="dnf"
+    elif command -v yum &> /dev/null; then
+        PM="yum"
+    elif command -v pacman &> /dev/null; then
+        PM="pacman"
+    else
+        echo -e "${vermelho}[ERRO] Gerenciador de pacotes não suportado.${neutro}"
         exit 1
     fi
 }
 
-echo "Verificando dependências do sistema..."
+# Instala um pacote se não existir
+ensure_installed() {
+    local pkg=$1
+    if ! command -v "$pkg" &> /dev/null; then
+        echo -e "${verde}[INFO] Instalando $pkg...${neutro}"
+        case $PM in
+            apt) apt update -y && apt install -y "$pkg" ;;
+            dnf) dnf install -y "$pkg" ;;
+            yum) yum install -y "$pkg" ;;
+            pacman) pacman -Sy --noconfirm "$pkg" ;;
+        esac
+    else
+        echo -e "${verde}[OK] $pkg já está instalado.${neutro}"
+    fi
+}
 
-check_command git
-check_command python3
-check_command pip3
-
-# Verifica o VENV isoladamente
-if ! python3 -m venv --help &> /dev/null; then
-    echo "Erro: O módulo venv do Python não está disponível. Instale com:"
-    echo "Debian/Ubuntu: sudo apt install python3-venv"
-    echo "Fedora: sudo dnf install python3-venv"
-    echo "Arch: sudo pacman -S python-virtualenv"
+# Verifica se é root
+if [ "$EUID" -ne 0 ]; then
+    echo -e "${vermelho}[ERRO] Por favor, execute como root.${neutro}"
     exit 1
 fi
 
-# Define o diretório de destino
+clear
+echo -e "${verde}"
+echo "====================================="
+echo "      AutoRecon - Instalador Fork    "
+echo "     Instalação Simplificada v1.0    "
+echo "====================================="
+echo -e "${neutro}"
+
+
+# Detecta gerenciador de pacotes
+detect_package_manager
+
+# Instala dependências
+ensure_installed git
+ensure_installed python3
+ensure_installed pip3
+
+# Instala python3-venv (com nomes diferentes se necessário)
+if ! python3 -m venv --help &> /dev/null; then
+    echo -e "${verde}[INFO] Instalando módulo venv...${neutro}"
+    case $PM in
+        apt) apt install -y python3-venv ;;
+        dnf|yum) $PM install -y python3-virtualenv ;;
+        pacman) pacman -Sy --noconfirm python-virtualenv ;;
+    esac
+fi
+
+# Diretório destino
 DEST_DIR="$HOME/AutoRecon"
 
-# Valida se o repo já está clonado e, caso não esteja, o clona
+# Clonagem
 if [ -d "$DEST_DIR" ]; then
-    echo "O diretório $DEST_DIR já existe."
+    echo -e "${verde}[INFO] O diretório $DEST_DIR já existe.${neutro}"
 else
-    echo "Clonando o AutoRecon para $DEST_DIR..."
+    echo -e "${verde}[INFO] Clonando AutoRecon...${neutro}"
     git clone https://github.com/LuizWT/AutoRecon.git "$DEST_DIR"
-    if [ $? -ne 0 ]; then
-        echo "Erro ao clonar o repositório."
-        exit 1
-    fi
 fi
 
-# Entra no diretório
-cd "$DEST_DIR" || {
-    echo "Erro ao entrar no diretório $DEST_DIR."
-    exit 1
-}
+cd "$DEST_DIR"
 
-# Cria o VENV
-echo "Criando ambiente virtual em venv/..."
+# Cria VENV
+echo -e "${verde}[INFO] Criando ambiente virtual...${neutro}"
 python3 -m venv venv
-if [ $? -ne 0 ]; then
-    echo "Erro ao criar o ambiente virtual com python3."
-    exit 1
-fi
 
-# Usa o source para ativar o VENV
+# Ativa VENV
 source venv/bin/activate
-if [ $? -ne 0 ]; then
-    echo "Erro ao ativar o ambiente virtual."
-    exit 1
-fi
 
-# Instala as dependências
-echo "Instalando dependências do requirements.txt..."
+# Instala dependências
+echo -e "${verde}[INFO] Instalando dependências do requirements.txt...${neutro}"
 pip3 install -r requirements.txt
-if [ $? -ne 0 ]; then
-    echo "Erro ao instalar as dependências."
-    deactivate
-    exit 1
-fi
 
-# Executa o autorecon com o caminho do python3 do ambiente VENV (previne erro)
-echo "Executando autorecon.py com sudo..."
-sudo venv/bin/python3 autorecon.py
+# Executa AutoRecon
+echo -e "${verde}[INFO] Executando AutoRecon...${neutro}"
+venv/bin/python3 autorecon.py
 
-echo "Instalação e verificação concluídas com sucesso!"
+echo -e "${verde}[OK] Tudo pronto! AutoRecon está rodando com sucesso.${neutro}"
+
