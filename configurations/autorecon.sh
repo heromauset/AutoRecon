@@ -1,6 +1,7 @@
+
 #!/bin/bash
 
-# Cores para saída
+# Cores
 verde="\033[0;32m"
 vermelho="\033[0;31m"
 neutro="\033[0m"
@@ -9,7 +10,7 @@ clear
 echo -e "${verde}"
 echo "====================================="
 echo "      AutoRecon - Instalador Fork    "
-echo "     Re-script por Ioti =)  "
+echo "     Instalação Simplificada v1.0    "
 echo "====================================="
 echo -e "${neutro}"
 
@@ -41,21 +42,32 @@ ensure_installed() {
     fi
 }
 
+# Checa e instala python3-venv adequado
+check_venv() {
+    if ! python3 -m venv --help &> /dev/null; then
+        echo -e "${verde}[INFO] python3-venv não está disponível. Instalando...${neutro}"
+        PYTHON_VERSION=$(python3 -V 2>&1 | awk '{print $2}' | cut -d. -f1,2)
+        case "$PM" in
+            apt) apt install -y "python${PYTHON_VERSION}-venv" ;;
+            dnf) dnf install -y python3-venv ;;
+            pacman) pacman -Sy --noconfirm python-virtualenv ;;
+        esac
+
+        # Verifica novamente após instalar
+        if ! python3 -m venv --help &> /dev/null; then
+            echo -e "${vermelho}[ERRO] python3-venv ainda não disponível após instalação.${neutro}"
+            exit 1
+        fi
+    fi
+}
+
 detect_package_manager
 
 echo -e "${verde}[INFO] Verificando dependências básicas...${neutro}"
 ensure_installed git
 ensure_installed python3
 ensure_installed python3-pip
-
-# Checa módulo venv
-if ! python3 -m venv --help &> /dev/null; then
-    echo -e "${vermelho}[ERRO] Módulo venv não disponível. Instale manualmente:${neutro}"
-    echo "Debian/Ubuntu: sudo apt install python3-venv"
-    echo "Fedora: sudo dnf install python3-venv"
-    echo "Arch: sudo pacman -S python-virtualenv"
-    exit 1
-fi
+check_venv
 
 # Define pasta destino
 DEST_DIR="$HOME/AutoRecon"
