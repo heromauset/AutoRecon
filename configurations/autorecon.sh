@@ -1,4 +1,3 @@
-
 #!/bin/bash
 
 # Cores
@@ -10,7 +9,7 @@ clear
 echo -e "${verde}"
 echo "====================================="
 echo "      AutoRecon - Instalador Fork    "
-echo "     Instalação Simplificada v1.0    "
+echo "        Re-Script por Ioti =)        "
 echo "====================================="
 echo -e "${neutro}"
 
@@ -47,12 +46,13 @@ check_venv() {
     if ! python3 -m venv --help &> /dev/null; then
         echo -e "${verde}[INFO] python3-venv não está disponível. Instalando...${neutro}"
         PYTHON_VERSION=$(python3 -V 2>&1 | awk '{print $2}' | cut -d. -f1,2)
-        case "$PM" in
-            apt) apt install -y "python${PYTHON_VERSION}-venv" ;;
-            dnf) dnf install -y python3-venv ;;
-            pacman) pacman -Sy --noconfirm python-virtualenv ;;
-        esac
-
+        
+        # Garantir permissão para instalação
+        sudo apt install -y "python${PYTHON_VERSION}-venv" || {
+            echo -e "${vermelho}[ERRO] Falha ao instalar python3-venv.${neutro}"
+            exit 1
+        }
+        
         # Verifica novamente após instalar
         if ! python3 -m venv --help &> /dev/null; then
             echo -e "${vermelho}[ERRO] python3-venv ainda não disponível após instalação.${neutro}"
@@ -61,6 +61,7 @@ check_venv() {
     fi
 }
 
+# Detecta o gerenciador de pacotes
 detect_package_manager
 
 echo -e "${verde}[INFO] Verificando dependências básicas...${neutro}"
